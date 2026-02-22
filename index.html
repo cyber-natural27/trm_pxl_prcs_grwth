@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TRM_PXL_PRCS // PRO // V10_ULTIMATE</title>
+    <title>TRM_PXL_PRCS // PRO // V10.5_LUSH</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;500&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -10,7 +10,7 @@
             --accent-hover: #00ff04; --bg-main: #000000; --bg-sidebar: #000000;
             --ui-text: var(--accent-main); --group-separator: rgba(0, 64, 255, 0.9);
             --danger: #ff4444; --button-hover: #00ff04; --ui-glow: 0 0 15px var(--accent-glow);
-            --sidebar-w: 320px;
+            --sidebar-w: 320px; --top-h: 150px;
         }
         body.light-mode {
             --bg-sidebar: #edead7; --bg-main: #f5f3e7; --ui-text: rgb(0, 64, 255);
@@ -21,131 +21,298 @@
             background: var(--bg-main); color: var(--ui-text); font-family: 'JetBrains Mono', monospace; 
             margin: 0; display: flex; height: 100vh; overflow: hidden; text-shadow: var(--ui-glow);
         }
-        #sidebar { 
-            width: var(--sidebar-w); flex-shrink: 0; padding: 40px 25px; 
-            border-right: 1px solid var(--group-separator); background: var(--bg-sidebar);
-            overflow-y: auto; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; z-index: 10;
-        }
-        .group { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--group-separator); padding-bottom: 15px; }
-        h2 { font-weight: 100; font-size: .8rem; letter-spacing: 5px; text-align: center; margin-bottom: 10px; }
-        label { display: block; font-size: 10px; font-weight: 500; letter-spacing: 2px; text-align: center; }
-        
-        input[type="range"] { width: 100%; appearance: none; background: transparent; cursor: crosshair; height: 30px; }
-        input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ui-text); }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; height: 22px; width: 12px; background: var(--ui-text); margin-top: -10px; border: 1px solid var(--bg-main); }
 
-        button, .btn-outline {
+        #sidebar { 
+            width: var(--sidebar-w); flex-shrink: 0; padding: 30px 20px; 
+            border-right: 1px solid var(--group-separator); background: var(--bg-sidebar);
+            overflow-y: auto; display: flex; flex-direction: column; gap: 15px; box-sizing: border-box; z-index: 30;
+        }
+
+        #main-layout { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+
+        #top-bar {
+            height: var(--top-h); background: var(--bg-sidebar); border-bottom: 1px solid var(--group-separator);
+            display: grid; grid-template-columns: 1fr 1fr 260px;
+            padding: 10px 20px; gap: 20px; box-sizing: border-box; z-index: 20;
+            overflow-x: auto; flex-shrink: 0; align-items: end;
+            padding-bottom: 15px;
+        }
+        
+        #viewport {
+            flex-grow: 1;
+            position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            cursor: grab;
+        }
+        #viewport:active { cursor: grabbing; }
+
+        #canvas-container { 
+            transition: transform 0.1s ease-out; 
+            transform-origin: center;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        
+        .grid-column { display: flex; flex-direction: column; gap: 10px; justify-content: end; }
+        .control-row { display: flex; flex-direction: column; gap: 2px; }
+
+        .stepper { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .step-btn { width: 26px; height: 26px; font-size: 14px; display: grid; place-items: center; flex-shrink: 0; font-weight: 300; }
+
+        input[type="range"] { 
+            flex-grow: 1; appearance: none; background: transparent; cursor: crosshair; 
+            height: 30px; 
+        }
+        input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ui-text); }
+        input[type="range"]::-webkit-slider-thumb { 
+            appearance: none; height: 18px; width: 10px; 
+            background: var(--ui-text); margin-top: -8px; 
+            border: 1px solid var(--bg-main);
+        }
+
+        #chaos-container {
+            position: fixed; right: 30px; top: 250px; 
+            display: flex; flex-direction: column; align-items: center; 
+            z-index: 1001; width: 60px; 
+        }
+
+        #recordBtn {
+            width: 15px; height: 15px; border-radius: 50%; 
+            background: #ff4444; border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer; margin-bottom: 40px;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.4); 
+            transition: 0.3s; flex-shrink: 0;
+        }
+
+        input[type="range"].vertical {
+            appearance: none; -webkit-appearance: none;
+            background: transparent; cursor: crosshair;
+            transform: rotate(-90deg); width: 400px; height: 40px; margin-top: 180px; 
+        }
+
+        input[type="range"].vertical::-webkit-slider-runnable-track { height: 2px; background: var(--accent-hover); }
+        input[type="range"].vertical::-webkit-slider-thumb {
+            appearance: none; -webkit-appearance: none;
+            height: 18px; width: 10px; background: var(--accent-hover);
+            margin-top: -8px; border: 1px solid var(--bg-main);
+        }
+
+        #canvas-container.projected-fullscreen {
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 5000 !important; background: black !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            transform: scale(1) !important;
+        }
+        #canvas-container.projected-fullscreen canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        canvas { image-rendering: pixelated; box-shadow: 0 0 100px rgba(0,0,0,0.8); }
+
+        .group { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--group-separator); padding-bottom: 12px; }
+        label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8; font-weight: 500; text-align: center; }
+        h2.title-btn { font-weight: 100; font-size: .8rem; letter-spacing: 5px; text-align: center; cursor: pointer; transition: 0.2s; }
+        h2.title-btn:hover { color: var(--button-hover); text-shadow: 0 0 10px var(--button-hover); }
+
+        button, .btn-outline, select {
             background: transparent; border: 1px solid var(--ui-text); color: var(--ui-text); 
             cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all 0.2s ease;
         }
         button:hover, .btn-outline:hover { background: var(--button-hover); color: #000; box-shadow: 0 0 15px var(--button-hover); }
-        .reset-btn { border-color: var(--danger) !important; color: var(--danger) !important; margin-top: 10px; }
-        .reset-btn:hover { background: var(--danger) !important; color: #fff !important; box-shadow: 0 0 20px var(--danger) !important; }
 
-        .stepper { display: flex; align-items: center; gap: 10px; }
-        .step-btn { width: 28px; height: 28px; font-size: 14px; padding: 0; }
-        .btn-outline { padding: 12px; width: 100%; font-size: 11px; letter-spacing: 3px; }
+        .reset-btn-large { 
+            border: 2px solid var(--danger) !important; color: var(--danger) !important; 
+            font-weight: bold; padding: 15px !important; font-size: 11px !important; margin-top: 5px;
+        }
+        .reset-btn-large:hover { 
+            background: var(--danger) !important; color: #ffffff !important; 
+            box-shadow: 0 0 20px var(--danger), 0 0 40px rgba(255, 68, 68, 0.4); 
+        }
+        
+        .action-group { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 2px; }
+        .sub-action-row { display: grid; grid-template-columns: 1fr 45px; gap: 8px; height: 35px; }
 
-        #viewport { flex-grow: 1; height: 100vh; overflow: auto; display: flex; align-items: center; justify-content: center; position: relative; background: #080808; }
-        #canvas-container { transition: transform 0.15s ease-out; }
-        canvas { image-rendering: pixelated; box-shadow: 0 0 100px rgba(0,0,0,0.8); }
+        #settings-menu { 
+            position: absolute; top: 160px; right: 20px; 
+            background: var(--bg-sidebar); border: 1px solid var(--ui-text); 
+            padding: 20px; display: none; flex-direction: column; gap: 15px; 
+            z-index: 2000; min-width: 240px; box-shadow: 0 0 40px rgba(0,0,0,1);
+        }
+        #settings-menu.open { display: flex; }
 
         #zoom-controls { position: fixed; bottom: 30px; right: 30px; display: flex; gap: 10px; z-index: 1000; }
-        .zoom-btn { width: 40px; height: 40px; background: var(--bg-sidebar); border: 1px solid var(--ui-text); color: var(--ui-text); display: grid; place-items: center; cursor: pointer; }
-
-        #settings-trigger { position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer; width: 40px; height: 40px; border: 1px solid var(--ui-text); background: var(--bg-sidebar); display: grid; place-items: center; }
-        #settings-menu { position: fixed; top: 70px; right: 20px; background: var(--bg-sidebar); border: 1px solid var(--ui-text); padding: 20px; display: none; flex-direction: column; gap: 15px; z-index: 1000; min-width: 240px; }
-        #settings-menu.open { display: flex; }
+        .zoom-btn { width: 40px; height: 40px; background: var(--bg-sidebar); border: 1px solid var(--ui-text); display: grid; place-items: center; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="settings-trigger" onclick="toggleSettings()"><svg viewBox="0 0 24 24" width="20" stroke="currentColor" fill="none" stroke-width="1"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
-
-<div id="settings-menu">
-    <label>SYSTEM SETTINGS</label>
-    <button class="btn-outline" onclick="toggleTheme()" style="padding:5px">LIGHT_MODE</button>
-    <button id="pathBtn" class="btn-outline" onclick="toggleFileSystem()" style="padding:5px; font-size:9px;">DIRECT_SAVE: OFF</button>
-    <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 10px;">AUDIO_ENGINE</span>
-        <button id="pulseBtn" class="step-btn" onclick="togglePulse()" style="width: 50px;">OFF</button>
-    </div>
-    <label>MASTER_VOL</label>
-    <input type="range" id="masterVol" min="0" max="100" value="40">
-    <label>MASTER_SPD</label>
-    <input type="range" id="masterSpeed" min="20" max="300" value="100">
-</div>
-
 <aside id="sidebar">
-    <h2>[TRM_PXL_PRCS // PRO]</h2>
-    <button class="btn-outline" onclick="initAudio(); document.getElementById('upload').click()">SOURCE_LOAD</button>
-    <input type="file" id="upload" hidden accept="image/*">
+    <h2 class="title-btn" onclick="exportImg()">[TRM_PXL_PRCS // PRO]</h2>
+    <button class="btn-outline" style="padding:12px" onclick="initAudio(); document.getElementById('upload').click()">SOURCE_LOAD</button>
+    <button class="btn-outline reset-btn-large" onclick="resetSystem()">SYSTEM_RESET</button>
+    <input type="file" id="upload" style="display:none" accept="image/*">
 
-    <div class="group">
+    <div class="group" style="margin-top:20px">
         <label>PXL // DTHR // HLF_TNE</label>
-        <div class="stepper"><button class="step-btn" data-delta="-1" data-id="pixelSize">-</button><input type="range" id="pixelSize" min="1" max="25" value="1"><button class="step-btn" data-delta="1" data-id="pixelSize">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-10" data-id="dither">-</button><input type="range" id="dither" min="0" max="255" value="0"><button class="step-btn" data-delta="10" data-id="dither">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-1" data-id="halftone">-</button><input type="range" id="halftone" min="0" max="20" value="0"><button class="step-btn" data-delta="1" data-id="halftone">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('pixelSize',-1)">-</button><input type="range" id="pixelSize" min="1" max="25" value="1"><button class="step-btn" onclick="step('pixelSize',1)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('dither',-10)">-</button><input type="range" id="dither" min="0" max="255" value="0"><button class="step-btn" onclick="step('dither',10)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('halftone',-1)">-</button><input type="range" id="halftone" min="0" max="20" value="0"><button class="step-btn" onclick="step('halftone',1)">+</button></div>
     </div>
 
     <div class="group">
         <label>BLM // SCNL // GRN</label>
-        <div class="stepper"><button class="step-btn" data-delta="-2" data-id="bloom">-</button><input type="range" id="bloom" min="0" max="40" value="0"><button class="step-btn" data-delta="2" data-id="bloom">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-10" data-id="scanLines">-</button><input type="range" id="scanLines" min="0" max="100" value="0"><button class="step-btn" data-delta="10" data-id="scanLines">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-5" data-id="grain">-</button><input type="range" id="grain" min="0" max="100" value="0"><button class="step-btn" data-delta="5" data-id="grain">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('bloom',-2)">-</button><input type="range" id="bloom" min="0" max="40" value="0"><button class="step-btn" onclick="step('bloom',2)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('scanLines',-10)">-</button><input type="range" id="scanLines" min="0" max="100" value="0"><button class="step-btn" onclick="step('scanLines',10)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('grain',-5)">-</button><input type="range" id="grain" min="0" max="100" value="0"><button class="step-btn" onclick="step('grain',5)">+</button></div>
     </div>
 
     <div class="group">
         <label>ABR // GLTCH</label>
-        <div class="stepper"><button class="step-btn" data-delta="-1" data-id="aberration">-</button><input type="range" id="aberration" min="0" max="30" value="0"><button class="step-btn" data-delta="1" data-id="aberration">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-5" data-id="glitchShift">-</button><input type="range" id="glitchShift" min="0" max="100" value="0"><button class="step-btn" data-delta="5" data-id="glitchShift">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('aberration',-1)">-</button><input type="range" id="aberration" min="0" max="30" value="0"><button class="step-btn" onclick="step('aberration',1)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('glitchShift',-5)">-</button><input type="range" id="glitchShift" min="0" max="100" value="0"><button class="step-btn" onclick="step('glitchShift',5)">+</button></div>
     </div>
 
     <div class="group">
         <label>B // C // S // G</label>
-        <div class="stepper"><button class="step-btn" data-delta="-5" data-id="bright">-</button><input type="range" id="bright" min="-100" max="100" value="0"><button class="step-btn" data-delta="5" data-id="bright">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-5" data-id="cont">-</button><input type="range" id="cont" min="-100" max="100" value="0"><button class="step-btn" data-delta="5" data-id="cont">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-5" data-id="saturate">-</button><input type="range" id="saturate" min="0" max="200" value="100"><button class="step-btn" data-delta="5" data-id="saturate">+</button></div>
-        <div class="stepper"><button class="step-btn" data-delta="-1" data-id="gamma">-</button><input type="range" id="gamma" min="5" max="30" value="10"><button class="step-btn" data-delta="1" data-id="gamma">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('bright',-5)">-</button><input type="range" id="bright" min="-100" max="100" value="0"><button class="step-btn" onclick="step('bright',5)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('cont',-5)">-</button><input type="range" id="cont" min="-100" max="100" value="0"><button class="step-btn" onclick="step('cont',5)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('saturate',-5)">-</button><input type="range" id="saturate" min="0" max="200" value="100"><button class="step-btn" onclick="step('saturate',5)">+</button></div>
+        <div class="stepper"><button class="step-btn" onclick="step('gamma',-1)">-</button><input type="range" id="gamma" min="5" max="30" value="10"><button class="step-btn" onclick="step('gamma',1)">+</button></div>
     </div>
-    
-    <button class="btn-outline" id="growthBtn" onclick="toggleGrowth()">SYNTHETIC_GROWTH</button>
-    <button class="btn-outline" onclick="exportImg()">RENDER_EXTRACT</button>
-    <button class="btn-outline reset-btn" onclick="resetSystem()">SYSTEM_RESET</button>
 </aside>
 
-<main id="viewport">
-    <div id="canvas-container"><canvas id="mainCanvas"></canvas></div>
-    <div id="zoom-controls">
-        <button class="zoom-btn" onclick="changeZoom(-0.1)">-</button>
-        <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
-        <button class="zoom-btn" style="font-size:9px" onclick="resetZoom()">1:1</button>
+<div id="main-layout">
+    <header id="top-bar">
+        <div class="grid-column">
+            <div class="control-row"><label>MASTER_SPD</label><div class="stepper"><button class="step-btn" onclick="step('masterSpeed',-10)">-</button><input type="range" id="masterSpeed" min="20" max="300" value="100"><button class="step-btn" onclick="step('masterSpeed',10)">+</button></div></div>
+            <div class="control-row"><label>GROWTH_FADE_SPD</label><div class="stepper"><button class="step-btn" onclick="step('fadeSpeed',-5)">-</button><input type="range" id="fadeSpeed" min="1" max="100" value="20"><button class="step-btn" onclick="step('fadeSpeed',5)">+</button></div></div>
+        </div>
+
+        <div class="grid-column">
+            <div class="control-row"><label>P_FIELD_DENSITY</label><div class="stepper"><button class="step-btn" onclick="step('fieldDensity',-1)">-</button><input type="range" id="fieldDensity" min="2" max="25" value="8"><button class="step-btn" onclick="step('fieldDensity',1)">+</button></div></div>
+            <div class="control-row"><label>PARTICLE_SIZE</label><div class="stepper"><button class="step-btn" onclick="step('particleSize',-2)">-</button><input type="range" id="particleSize" min="10" max="100" value="22"><button class="step-btn" onclick="step('particleSize',2)">+</button></div></div>
+        </div>
+
+        <div class="grid-column">
+            <div class="action-group">
+                <button class="btn-outline" id="growthBtn" style="height:40px; font-size:10px; letter-spacing:2px" onclick="toggleGrowth()">SYNTHETIC_GROWTH</button>
+                <div class="sub-action-row">
+                    <select id="growthMode" class="btn-outline" style="font-size:9px">
+                        <option value="garden">BIO_MORPH // GARDEN</option>
+                        <option value="slime">SYNTHETIC_SLIME</option>
+                        <option value="fluid">FLUID_TWIST</option>
+                    </select>
+                    <button id="settings-trigger" class="btn-outline" onclick="toggleSettings()">
+                        <svg viewBox="0 0 24 24" width="16" stroke="currentColor" fill="none" stroke-width="1.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0-2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="settings-menu">
+        <label>SYSTEM SETTINGS</label>
+        <button class="btn-outline" onclick="toggleTheme()" style="padding:10px">LIGHT_MODE</button>
+        <button id="pathBtn" class="btn-outline" onclick="toggleFileSystem()" style="padding:10px; font-size:9px">DIRECT_SAVE: OFF</button>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 10px;">AUDIO_ENGINE</span>
+            <button id="pulseBtn" class="step-btn" style="width: 60px; height: 30px" onclick="togglePulse()">OFF</button>
+        </div>
+        <label>MASTER_VOL</label>
+        <input type="range" id="masterVol" min="0" max="100" value="40">
     </div>
-</main>
+
+    <main id="viewport">
+        <div id="chaos-container">
+            <button id="recordBtn" onclick="toggleRecording()" title="RECORD_OUTPUT"></button>
+            <input type="range" id="vChaos" class="vertical" min="0" max="100" value="0">
+        </div>
+        <div id="canvas-container"><canvas id="mainCanvas"></canvas></div>
+        <div id="zoom-controls">
+            <button class="zoom-btn" onclick="toggleProjectedView()" title="FULLSCREEN (F)">
+                <svg viewBox="0 0 24 24" width="18" stroke="currentColor" fill="none" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            </button>
+            <button class="zoom-btn" onclick="changeZoom(-0.1)">-</button>
+            <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
+            <button class="zoom-btn" style="font-size:9px; font-weight:bold" onclick="resetZoom()">1:1</button>
+        </div>
+    </main>
+</div>
 
 <script>
     const canvas = document.getElementById('mainCanvas'), ctx = canvas.getContext('2d', { alpha: false });
     const container = document.getElementById('canvas-container');
+    const viewport = document.getElementById('viewport');
     const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-    let imgSource = null, primaryOriginal = null, pulseActive = false, pulseStep = 0, frameReq = false, zoom = 1;
-
+    
+    let imgSource = null, primaryOriginal = null, pulseActive = false, pulseStep = 0, frameReq = false;
+    let zoom = 1, panX = 0, panY = 0, isDragging = false, startX, startY;
     let growthActive = false, growthReq = null, agents = [], nutrientMap = [], trailMap = [];
-    let useFileSystem = false;
+    let useFileSystem = false, isFullscreen = false;
 
-    // --- AUDIO ENGINE ---
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    viewport.addEventListener('mousedown', (e) => {
+        if (isFullscreen || e.target !== viewport) return;
+        isDragging = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging || isFullscreen) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    viewport.addEventListener('wheel', (e) => {
+        if (isFullscreen) return;
+        if (e.ctrlKey) {
+            e.preventDefault();
+            changeZoom(e.deltaY > 0 ? -0.1 : 0.1);
+        } else {
+            if (e.target === viewport) {
+                panX -= e.deltaX;
+                panY -= e.deltaY;
+                updateTransform();
+            }
+        }
+    }, { passive: false });
+
+    function updateTransform() {
+        container.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    }
+
+    function toggleProjectedView() {
+        const zoomControls = document.getElementById('zoom-controls');
+        isFullscreen = !isFullscreen;
+        if (isFullscreen) {
+            container.classList.add('projected-fullscreen');
+            container.style.transform = ""; 
+            zoomControls.style.zIndex = "6000";
+        } else {
+            container.classList.remove('projected-fullscreen');
+            zoomControls.style.zIndex = "1000";
+            updateTransform();
+        }
+    }
+
     let audioCtx, masterGain, mainFilter, driveNode;
     let synthVoices = { pad: null, choir: null };
-    const SCALE = [1, 1.2, 1.333, 1.5, 1.777, 2]; // Minor Pentatonic Ratios
+    const BIOMES = [ [1, 1.25, 1.5, 1.875, 2.25], [1, 1.2, 1.333, 1.5, 1.8], [0.8, 1, 1.2, 1.5, 2.0] ];
+    let activeScale = BIOMES[0];
 
     function initAudio() {
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         masterGain = audioCtx.createGain(); masterGain.connect(audioCtx.destination);
-        mainFilter = audioCtx.createBiquadFilter(); 
-        mainFilter.type = 'peaking'; // RESONANT PEAK FOR CONTRAST
-        driveNode = audioCtx.createWaveShaper();
-        mainFilter.connect(driveNode); driveNode.connect(masterGain);
-        updateAudioParams(); // Initial sync
+        mainFilter = audioCtx.createBiquadFilter(); mainFilter.type = 'peaking'; 
+        driveNode = audioCtx.createWaveShaper(); mainFilter.connect(driveNode); driveNode.connect(masterGain);
+        updateAudioParams();
     }
 
     function makeDistCurve(amount) {
@@ -154,26 +321,18 @@
         return curve;
     }
 
-    // REAL-TIME PARAMETER UPDATE (NO DELAY)
     function updateAudioParams() {
         if(!audioCtx) return;
         const getV = (id) => parseInt(document.getElementById(id).value);
         const spd = getV('masterSpeed') / 100;
-
-        // Master Volume
         masterGain.gain.setTargetAtTime((getV('masterVol')/100)*0.15, audioCtx.currentTime, 0.05);
-
-        // Filter: Brightness maps to gain, Contrast maps to gain AND sharpness (Q)
         mainFilter.frequency.setTargetAtTime(1500, audioCtx.currentTime, 0.1);
         mainFilter.gain.setTargetAtTime((getV('bright') / 2) + (getV('cont') / 2.5), audioCtx.currentTime, 0.05); 
         mainFilter.Q.setTargetAtTime(Math.abs(getV('cont')) / 4, audioCtx.currentTime, 0.05);
-        
         driveNode.curve = makeDistCurve(getV('saturate')); 
-
         const baseF = (110 * (getV('gamma')/10)) * spd;
-        const detuneIntensity = getV('aberration') * 60; 
         updateVoice('pad', baseF, 'sine', getV('bloom')/400, 0); 
-        updateVoice('choir', baseF * 4.0, 'sawtooth', (getV('scanLines') / 3000), detuneIntensity * 1.5);
+        updateVoice('choir', baseF * 4.0, 'sawtooth', (getV('scanLines') / 3000), (getV('aberration') * 60) * 1.5);
     }
 
     function runEngine() {
@@ -182,42 +341,31 @@
         const spd = getV('masterSpeed') / 100;
         const beat = (60 / 125 / 4) / spd;
 
-        // SLIDER TRIGGERED PULSES
         if (pulseStep % 4 === 0 && getV('pixelSize') > 1) triggerOsc((55 + getV('pixelSize')*2)*spd, 'sine', 0.2, 0.25); 
         if (pulseStep % 2 === 0 && getV('dither') > 20) triggerOsc((1000 + getV('dither'))*spd, 'triangle', 0.05, getV('dither')/500);
         if (getV('halftone') > 1 && pulseStep % 2 !== 0) triggerOsc((4000 + (getV('halftone')*100))*spd, 'sine', 0.01, getV('halftone')/150);
         if (getV('grain') > 5 && Math.random() > 0.4) triggerOsc((6000 + (Math.random()*6000))*spd, 'sine', 0.015, getV('grain')/500);
         if (getV('glitchShift') > 15 && Math.random() > 0.85) triggerOsc((Math.random()*800 + 50)*spd, 'square', 0.1, getV('glitchShift')/80);
 
-        // --- HARMONIC GROWTH SONG ---
         if (growthActive) {
-            // Heavy Sub Thump (LOUDER)
-            if (pulseStep % 4 === 0) triggerOsc(40 * spd, 'sine', 0.6, 0.5);
-            
-            // Pentatonic Harmony (LOUDER)
-            if (pulseStep % 8 === 4) {
-                const root = (110 * (getV('gamma')/10)) * spd;
-                [0, 2, 4].forEach(interval => {
-                    const note = root * SCALE[interval];
-                    triggerOsc(note, 'triangle', 1.5, 0.12);
-                });
-            }
-
-            // High Arpeggio (LOUDER)
-            if (pulseStep % 2 === 0) {
-                const randomIdx = Math.floor(Math.random() * SCALE.length);
-                const note = (220 * (getV('gamma')/10)) * SCALE[randomIdx] * spd;
-                // Subtle glitch dissonance
-                const jitter = (Math.random() - 0.5) * getV('glitchShift');
-                triggerOsc(note + jitter, 'sine', 0.1, 0.15);
+            const root = (110 * (getV('gamma')/10)) * spd;
+            if (pulseStep % 8 === 0) {
+                const note = root * activeScale[Math.floor(Math.random() * activeScale.length)];
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = 'sine'; o.frequency.setValueAtTime(note, audioCtx.currentTime);
+                o.frequency.exponentialRampToValueAtTime(note * 1.01, audioCtx.currentTime + 3); 
+                g.gain.setValueAtTime(0, audioCtx.currentTime);
+                g.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 1.5); 
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 4);
+                o.connect(g); g.connect(masterGain); o.start(); o.stop(audioCtx.currentTime + 4);
             }
         }
-
         pulseStep = (pulseStep + 1) % 16;
         setTimeout(runEngine, beat * 1000);
     }
 
     function triggerOsc(f, t, d, v) {
+        if (!audioCtx) return;
         const o = audioCtx.createOscillator(), g = audioCtx.createGain();
         o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
         g.gain.setValueAtTime(v, audioCtx.currentTime);
@@ -243,7 +391,6 @@
         else Object.keys(synthVoices).forEach(k => { if(synthVoices[k]) synthVoices[k].g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2); });
     }
 
-    // --- PROCESSING ---
     function process() {
         if (!imgSource || growthActive) return;
         const w = canvas.width = imgSource.width, h = canvas.height = imgSource.height;
@@ -255,11 +402,8 @@
 
         ctx.drawImage(imgSource, 0, 0);
         let imgData = ctx.getImageData(0, 0, w, h), d = imgData.data;
-        
         for (let i = 0; i < d.length; i += 4) {
-            let r = (d[i] + br - 128) * ct + 128;
-            let g = (d[i+1] + br - 128) * ct + 128;
-            let b = (d[i+2] + br - 128) * ct + 128;
+            let r = (d[i] + br - 128) * ct + 128, g = (d[i+1] + br - 128) * ct + 128, b = (d[i+2] + br - 128) * ct + 128;
             if (sat !== 1.0) { const gray = 0.299*r + 0.587*g + 0.114*b; r = gray + sat*(r-gray); g = gray + sat*(g-gray); b = gray + sat*(b-gray); }
             if (gaInv !== 1.0) { r = 255 * Math.pow(Math.max(0,r)/255, gaInv); g = 255 * Math.pow(Math.max(0,g)/255, gaInv); b = 255 * Math.pow(Math.max(0,b)/255, gaInv); }
             d[i] = r; d[i+1] = g; d[i+2] = b;
@@ -267,17 +411,15 @@
 
         if (pSize > 1 || ditherAmt > 0) {
             let src = new Uint8ClampedArray(d);
-            for (let y = 0; y < h; y += pSize) {
-                for (let x = 0; x < w; x += pSize) {
-                    const i = (y * w + x) * 4;
-                    let r = src[i], g = src[i+1], b = src[i+2];
-                    if (ditherAmt > 0) {
-                        const thresh = (BAYER[(y/pSize)%4][(x/pSize)%4] / 16) * ditherAmt;
-                        r = r + thresh > 128 ? 255 : 0; g = g + thresh > 128 ? 255 : 0; b = b + thresh > 128 ? 255 : 0;
-                    }
-                    for (let yy=0; yy<pSize && y+yy < h; yy++) for (let xx=0; xx<pSize && x+xx < w; xx++) {
-                        const idx = ((y+yy)*w + (x+xx))*4; d[idx]=r; d[idx+1]=g; d[idx+2]=b;
-                    }
+            for (let y = 0; y < h; y += pSize) for (let x = 0; x < w; x += pSize) {
+                const i = (y * w + x) * 4;
+                let r = src[i], g = src[i+1], b = src[i+2];
+                if (ditherAmt > 0) {
+                    const thresh = (BAYER[(y/pSize)%4][(x/pSize)%4] / 16) * ditherAmt;
+                    r = r + thresh > 128 ? 255 : 0; g = g + thresh > 128 ? 255 : 0; b = b + thresh > 128 ? 255 : 0;
+                }
+                for (let yy=0; yy<pSize && y+yy < h; yy++) for (let xx=0; xx<pSize && x+xx < w; xx++) {
+                    const idx = ((y+yy)*w + (x+xx))*4; d[idx]=r; d[idx+1]=g; d[idx+2]=b;
                 }
             }
         }
@@ -303,7 +445,6 @@
         if (grainAmt > 0) { ctx.fillStyle = `rgba(255,255,255,${grainAmt/400})`; for (let i=0; i<(w*h*(grainAmt/100)); i++) ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1); }
     }
 
-    // --- GROWTH ---
     function toggleGrowth() {
         if (!imgSource) return;
         growthActive = !growthActive;
@@ -317,46 +458,198 @@
         }
     }
 
+    function calculateChaosOffset(x, y, time, chaos) {
+        const waveA = Math.sin(time * 2 + x * 0.02) * (chaos * 80);
+        const waveB = Math.cos(time * 1.5 + y * 0.03) * (chaos * 80);
+        const dx = (waveA * Math.cos(time)) + (waveB * Math.sin(time));
+        const dy = (waveB * Math.cos(time)) + (waveA * Math.sin(time));
+        return { x: dx, y: dy };
+    }
+
+    function createPlant(x, y, imgData) {
+        const w = canvas.width;
+        const i = (Math.floor(y) * w + Math.floor(x)) * 4;
+        const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
+        
+        const petalLayers = [
+            { count: 3 + Math.floor(Math.random()*3), scale: 0.6, alpha: 0.4 }, 
+            { count: 5 + Math.floor(Math.random()*5), scale: 1.0, alpha: 0.8 }    
+        ];
+        
+        const petalData = petalLayers.map(layer => {
+            const petals = [];
+            for(let p=0; p < layer.count; p++) {
+                petals.push({
+                    angle: (p / layer.count) * Math.PI * 2 + (Math.random() * 0.5),
+                    len: (2 + Math.random() * 6) * layer.scale,
+                    width: (1.5 + Math.random() * 2) * layer.scale,
+                    veins: 2 + Math.floor(Math.random() * 3)
+                });
+            }
+            return { petals, alpha: layer.alpha };
+        });
+
+        return {
+            baseX: x, baseY: y, height: 0,
+            maxHeight: 30 + Math.random() * 110,
+            curveX: (Math.random() - 0.5) * 60,
+            droopForce: 0.2 + Math.random() * 0.5,
+            color: `rgb(${r},${g},${b})`,
+            veinColor: `rgb(${Math.max(0, r-40)},${Math.max(0, g-40)},${Math.max(0, b-40)})`,
+            bloomColor: `rgb(${r},${g},${b})`,
+            coreColor: `rgb(${Math.min(255, r+50)},${Math.min(255, g+40)},${Math.min(255, b+20)})`,
+            layers: petalData,
+            swayOffset: Math.random() * Math.PI * 2,
+            thickness: 0.5 + Math.random() * 2.5,
+            state: 'growing', life: 0, maxLife: 300 + Math.random() * 600
+        };
+    }
+
     function initGrowth() {
-        const w = canvas.width, h = canvas.height;
+        const w = canvas.width, h = canvas.height, mode = document.getElementById('growthMode').value, density = parseInt(document.getElementById('fieldDensity').value);
         agents = []; nutrientMap = new Float32Array(w * h); trailMap = new Float32Array(w * h).fill(0);
+        activeScale = BIOMES[Math.floor(Math.random() * BIOMES.length)];
         const data = ctx.getImageData(0, 0, w, h).data;
-        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-            const br = (data[i] + data[i+1] + data[i+2]) / 3, sat = Math.max(data[i], data[i+1], data[i+2]) - Math.min(data[i], data[i+1], data[i+2]);
-            nutrientMap[y * w + x] = br / 255;
-            if ((sat > 150 || br > 200) && Math.random() > 0.985) {
-                for(let k=0; k<10; k++) agents.push({ x: x, y: y, angle: Math.random() * Math.PI * 2, color: `rgb(${data[i]},${data[i+1]},${data[i+2]})` });
+        
+        if (mode === 'garden') {
+            const stepSize = density * 2;
+            for (let y = h; y > 0; y -= stepSize) {
+                for (let x = 0; x < w; x += stepSize) {
+                    const i = (y * w + x) * 4;
+                    const br = (data[i] + data[i+1] + data[i+2]) / 3;
+                    if (br > 40 && Math.random() > 0.8) agents.push(createPlant(x, y, data));
+                }
+            }
+        } else if (mode === 'slime') {
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4, br = (data[i] + data[i+1] + data[i+2]) / 3, sat = Math.max(data[i], data[i+1], data[i+2]) - Math.min(data[i], data[i+1], data[i+2]);
+                nutrientMap[y * w + x] = br / 255;
+                if ((sat > 150 || br > 200) && Math.random() > 0.985) for(let k=0; k<10; k++) agents.push({ x: x, y: y, angle: Math.random() * Math.PI * 2, color: `rgb(${data[i]},${data[i+1]},${data[i+2]})` });
+            }
+        } else {
+            for (let y = 0; y < h; y += density) for (let x = 0; x < w; x += density) {
+                const i = (y * w + x) * 4; agents.push({ ox: x, oy: y, x: x, y: y, color: `rgb(${data[i]},${data[i+1]},${data[i+2]})` });
             }
         }
     }
 
     function growthLoop() {
         if (!growthActive) return;
-        const spd = parseInt(document.getElementById('masterSpeed').value) / 100;
-        const w = canvas.width, h = canvas.height, sensorDist = 18, sensorAngle = 0.4, moveSpeed = 0.75 * spd;
-        ctx.fillStyle = 'rgba(0,0,0,0.02)'; ctx.fillRect(0, 0, w, h);
-        agents.forEach(a => {
-            const getVal = (ang) => {
-                const sx = Math.floor(a.x + Math.cos(a.angle + ang) * sensorDist), sy = Math.floor(a.y + Math.sin(a.angle + ang) * sensorDist);
-                if (sx < 0 || sx >= w || sy < 0 || sy >= h) return -1;
-                return nutrientMap[sy * w + sx] + (trailMap[sy * w + sx] * 2);
-            };
-            const f = getVal(0), fl = getVal(-sensorAngle), fr = getVal(sensorAngle);
-            if (f < fl && f < fr) a.angle += (Math.random() - 0.5) * 2 * sensorAngle;
-            else if (fl < fr) a.angle += sensorAngle;
-            else if (fr < fl) a.angle -= sensorAngle;
-            a.x = (a.x + Math.cos(a.angle) * moveSpeed + w) % w; a.y = (a.y + Math.sin(a.angle) * moveSpeed + h) % h;
-            const idx = Math.floor(a.y) * w + Math.floor(a.x); trailMap[idx] = Math.min(1.0, trailMap[idx] + 0.12);
-            ctx.beginPath(); ctx.arc(a.x, a.y, 2.2, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.globalAlpha = 0.65; ctx.fill();
-        });
-        for (let i = 0; i < trailMap.length; i++) trailMap[i] *= 0.95; 
+        const w = canvas.width, h = canvas.height, mode = document.getElementById('growthMode').value, spd = parseInt(document.getElementById('masterSpeed').value) / 100;
+        const pSize = parseInt(document.getElementById('particleSize').value) / 10;
+        const chaos = parseInt(document.getElementById('vChaos').value) / 100;
+        const fadeAmt = (Math.pow(parseInt(document.getElementById('fadeSpeed').value) / 200, 2) * 0.1).toFixed(4);
+        
+        ctx.fillStyle = `rgba(0,0,0,${fadeAmt})`; ctx.fillRect(0, 0, w, h);
+
+        if (mode === 'garden') {
+            const t = performance.now() / 1500 * spd;
+            const wind = (chaos * 40) + 5;
+            const sourceData = ctx.getImageData(0, 0, w, h).data;
+
+            agents.forEach((a, idx) => {
+                if (a.state === 'growing') {
+                    a.height += 0.6 * spd;
+                    if (a.height >= a.maxHeight) a.state = 'blooming';
+                } else if (a.state === 'blooming') {
+                    a.life++;
+                    if (a.life > a.maxLife) a.state = 'decaying';
+                } else if (a.state === 'decaying') {
+                    a.height -= 0.4 * spd;
+                    if (a.height <= 0) agents[idx] = createPlant(a.baseX, a.baseY, sourceData); 
+                }
+
+                const maturity = a.height / a.maxHeight;
+                const droop = (a.state === 'blooming' || a.state === 'decaying') ? (maturity * 15 * a.droopForce) : 0;
+                const sway = Math.sin(t + (a.baseX * 0.05) + a.swayOffset) * (wind * maturity);
+                const tipX = a.baseX + sway + (a.curveX * maturity);
+                const tipY = a.baseY - a.height + droop;
+
+                ctx.beginPath();
+                ctx.moveTo(a.baseX, a.baseY);
+                ctx.quadraticCurveTo(a.baseX + (sway * 0.3), a.baseY - (a.height * 0.6), tipX, tipY);
+                ctx.strokeStyle = a.color;
+                ctx.lineWidth = a.thickness;
+                ctx.globalAlpha = a.state === 'decaying' ? 0.2 : 0.6;
+                ctx.stroke();
+
+                if (a.height > a.maxHeight * 0.6) {
+                    const bloomScale = Math.min(1, (a.height - (a.maxHeight * 0.6)) / (a.maxHeight * 0.4)) * pSize;
+                    ctx.save();
+                    ctx.translate(tipX, tipY);
+                    ctx.rotate((sway * 0.05) + (droop * 0.02)); 
+                    
+                    a.layers.forEach(layer => {
+                        ctx.globalAlpha = (a.state === 'decaying' ? 0.2 : layer.alpha);
+                        layer.petals.forEach(p => {
+                            const pLen = p.len * bloomScale;
+                            const pWid = p.width * bloomScale;
+                            ctx.beginPath();
+                            ctx.ellipse(0, 0, pLen, pWid, p.angle + (t * 0.05), 0, Math.PI * 2);
+                            ctx.fillStyle = a.bloomColor;
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.strokeStyle = a.veinColor;
+                            ctx.lineWidth = 0.5;
+                            for(let v=0; v<p.veins; v++) {
+                                const vAng = p.angle + (t * 0.05) + (v-1)*0.2;
+                                ctx.moveTo(0,0);
+                                ctx.lineTo(Math.cos(vAng)*pLen*0.8, Math.sin(vAng)*pLen*0.8);
+                            }
+                            ctx.stroke();
+                        });
+                    });
+                    ctx.beginPath();
+                    ctx.arc(0, 0, bloomScale * 0.8, 0, Math.PI * 2);
+                    ctx.fillStyle = a.coreColor;
+                    ctx.globalAlpha = 0.9;
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+        } else if (mode === 'slime') {
+            const sensorDist = 18 + (chaos * 20), sensorAngle = 0.4 + (chaos * 0.5), moveSpeed = 0.75 * spd;
+            agents.forEach(a => {
+                const getVal = (ang) => {
+                    const sx = Math.floor(a.x + Math.cos(a.angle + ang) * sensorDist), sy = Math.floor(a.y + Math.sin(a.angle + ang) * sensorDist);
+                    if (sx < 0 || sx >= w || sy < 0 || sy >= h) return -1;
+                    return nutrientMap[sy * w + sx] + (trailMap[sy * w + sx] * 2);
+                };
+                const f = getVal(0), fl = getVal(-sensorAngle), fr = getVal(sensorAngle);
+                if (f < fl && f < fr) a.angle += (Math.random() - 0.5) * 2 * sensorAngle;
+                else if (fl < fr) a.angle += sensorAngle;
+                else if (fr < fl) a.angle -= sensorAngle;
+                a.x = (a.x + Math.cos(a.angle) * moveSpeed + w) % w; a.y = (a.y + Math.sin(a.angle) * moveSpeed + h) % h;
+                const idx = Math.floor(a.y) * w + Math.floor(a.x); trailMap[idx] = Math.min(1.0, trailMap[idx] + 0.12);
+                ctx.beginPath(); ctx.arc(a.x, a.y, pSize, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.globalAlpha = 0.65; ctx.fill();
+            });
+            for (let i = 0; i < trailMap.length; i++) trailMap[i] *= 0.95; 
+        } else {
+            const t = performance.now() / 2500 * spd;
+            agents.forEach(a => {
+                const baseDrift = Math.sin(t + a.ox * 0.01) * 20, baseTwist = Math.cos(t * 0.5 + a.oy * 0.01) * 20;
+                const offset = calculateChaosOffset(a.ox, a.oy, t, chaos);
+                a.x = a.ox + baseDrift + offset.x; 
+                a.y = a.oy + baseTwist + offset.y;
+                ctx.beginPath(); ctx.arc(a.x, a.y, pSize, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.fill();
+            });
+        }
         growthReq = requestAnimationFrame(growthLoop);
     }
 
-    // --- SYSTEM UTILS ---
+    function step(id, delta) { const el = document.getElementById(id); el.value = parseInt(el.value) + delta; req(); }
+    
+    function resetZoom() { 
+        if (!imgSource) return;
+        const vw = viewport.clientWidth - 40;
+        const vh = viewport.clientHeight - 40;
+        const scale = Math.min(vw / imgSource.width, vh / imgSource.height, 1);
+        zoom = scale; panX = 0; panY = 0;
+        updateTransform();
+    }
+
     function resetSlidersOnly() {
-        const defaults = { pixelSize:1, dither:0, halftone:0, bloom:0, scanLines:0, grain:0, aberration:0, glitchShift:0, bright:0, cont:0, saturate:100, gamma:10 };
+        const defaults = { pixelSize:1, dither:0, halftone:0, bloom:0, scanLines:0, grain:0, aberration:0, glitchShift:0, bright:0, cont:0, saturate:100, gamma:10, vChaos:0 };
         Object.keys(defaults).forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = defaults[id]; });
         updateAudioParams();
     }
@@ -368,91 +661,67 @@
         resetSlidersOnly(); resetZoom(); process();
     }
 
-    function req() { 
-        updateAudioParams(); // Immediate Audio Sync
-        if (!frameReq) { frameReq = true; requestAnimationFrame(() => { process(); frameReq = false; }); } 
-    }
+    function req() { updateAudioParams(); if (!frameReq) { frameReq = true; requestAnimationFrame(() => { process(); frameReq = false; }); } }
     
     document.querySelectorAll('input[type="range"]').forEach(i => i.oninput = () => req());
-    document.querySelectorAll('.step-btn[data-id]').forEach(b => b.onclick = () => { const el = document.getElementById(b.dataset.id); el.value = parseInt(el.value) + parseInt(b.dataset.delta); req(); });
     
-    // --- NEW: COMPRESSION & UPLOAD ---
-    async function compressImage(img) {
-        const MAX_SIZE = 200 * 1024;
-        let quality = 0.9;
-        let scale = 1.0;
-        let tempCanvas = document.createElement('canvas');
-        let tCtx = tempCanvas.getContext('2d');
-        let dataUrl = "";
-        let blobSize = Infinity;
-
-        while (blobSize > MAX_SIZE && scale > 0.1) {
-            tempCanvas.width = img.width * scale;
-            tempCanvas.height = img.height * scale;
-            tCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-            dataUrl = tempCanvas.toDataURL('image/jpeg', quality);
-            blobSize = (dataUrl.length - 814) / 1.37; 
-            scale -= 0.1;
-        }
-
-        return new Promise((resolve) => {
-            const compressedImg = new Image();
-            compressedImg.onload = () => resolve(compressedImg);
-            compressedImg.src = dataUrl;
-        });
-    }
-
     document.getElementById('upload').onchange = (e) => { 
-        const file = e.target.files[0];
-        if (!file) return;
-        const r = new FileReader(); 
-        r.onload = (f) => { 
-            const nI = new Image(); 
-            nI.onload = async () => { 
-                let processedImage = nI;
-                if (file.size > 200 * 1024) {
-                    processedImage = await compressImage(nI);
-                }
-                primaryOriginal = processedImage; 
-                imgSource = processedImage; 
-                resetZoom(); 
-                resetSlidersOnly(); 
-                req(); 
-            }; 
-            nI.src = f.target.result; 
+        const file = e.target.files[0]; if (!file) return;
+        const r = new FileReader(); r.onload = (f) => { 
+            const nI = new Image(); nI.onload = async () => { 
+                primaryOriginal = imgSource = nI; 
+                resetSlidersOnly(); req();
+                setTimeout(resetZoom, 100);
+            }; nI.src = f.target.result; 
         }; r.readAsDataURL(file); 
     };
 
     function toggleSettings() { document.getElementById('settings-menu').classList.toggle('open'); }
     function toggleTheme() { document.body.classList.toggle('light-mode'); }
-    function toggleFileSystem() {
-        useFileSystem = !useFileSystem;
-        document.getElementById('pathBtn').innerText = useFileSystem ? 'DIRECT_SAVE: ON' : 'DIRECT_SAVE: OFF';
+    function toggleFileSystem() { useFileSystem = !useFileSystem; document.getElementById('pathBtn').innerText = useFileSystem ? 'DIRECT_SAVE: ON' : 'DIRECT_SAVE: OFF'; }
+    function changeZoom(d) { zoom = Math.max(0.05, zoom + d); updateTransform(); }
+
+    window.onkeydown = (e) => { 
+        if (e.code === 'Space') { e.preventDefault(); toggleGrowth(); } 
+        if (e.code === 'KeyF') { toggleProjectedView(); }
+    };
+
+    function exportImg() {
+        if (!canvas) return;
+        const offscreen = document.createElement('canvas');
+        offscreen.width = canvas.width; offscreen.height = canvas.height;
+        const oCtx = offscreen.getContext('2d');
+        oCtx.fillStyle = "#000000"; oCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+        oCtx.drawImage(canvas, 0, 0);
+        const l = document.createElement('a');
+        l.download = 'TRM_PX_EXP.jpg'; l.href = offscreen.toDataURL('image/jpeg', 0.95);
+        l.click();
     }
 
-    async function exportImg() { 
-        if (useFileSystem && window.showSaveFilePicker) {
-            try {
-                const handle = await window.showSaveFilePicker({
-                    suggestedName: 'RENDER.png',
-                    types: [{ description: 'PNG Image', accept: {'image/png': ['.png']} }]
-                });
-                const writable = await handle.createWritable();
-                canvas.toBlob(async (blob) => {
-                    await writable.write(blob);
-                    await writable.close();
-                });
-            } catch (err) { console.error("Save failed", err); }
+    async function toggleRecording() {
+        const btn = document.getElementById('recordBtn');
+        if (!isRecording) {
+            recordedChunks = []; if (!audioCtx) initAudio();
+            const canvasStream = canvas.captureStream(30);
+            const audioDest = audioCtx.createMediaStreamDestination();
+            masterGain.connect(audioDest);
+            const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
+            mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"', videoBitsPerSecond: 8000000 });
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `TRM_PROC_${Date.now()}.mp4`;
+                a.click(); URL.revokeObjectURL(url);
+            };
+            mediaRecorder.start(); isRecording = true;
+            btn.style.background = '#ff4444'; btn.style.borderRadius = '4px'; btn.style.boxShadow = '0 0 20px #ffffff';
         } else {
-            const l = document.createElement('a'); 
-            l.download = 'RENDER.png'; 
-            l.href = canvas.toDataURL(); 
-            l.click(); 
+            mediaRecorder.stop(); isRecording = false;
+            btn.style.background = '#ff4444'; btn.style.borderRadius = '50%'; btn.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.4)';
         }
     }
-
-    function changeZoom(d) { zoom = Math.max(0.1, zoom + d); container.style.transform = `scale(${zoom})`; }
-    function resetZoom() { zoom = 1; container.style.transform = `scale(1)`; }
 </script>
 </body>
 </html>
