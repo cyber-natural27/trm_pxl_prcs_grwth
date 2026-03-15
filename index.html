@@ -199,6 +199,7 @@
                     <select id="growthMode" class="btn-outline" style="font-size:9px">
                         <option value="garden">BIO_MORPH // GARDEN</option>
                         <option value="slime">SYNTHETIC_SLIME</option>
+                        <option value="coral">CORAL_BRANCH</option>
                         <option value="fluid">FLUID_TWIST</option>
                     </select>
                     <button id="settings-trigger" class="btn-outline" onclick="toggleSettings()">
@@ -244,7 +245,7 @@
     const viewport = document.getElementById('viewport');
     const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
     
-    let imgSource = null, primaryOriginal = null, pulseActive = false, pulseStep = 0, frameReq = false;
+    let imgSource = null, primaryOriginal = null, highResSource = null, pulseActive = false, pulseStep = 0, frameReq = false;
     let zoom = 1, panX = 0, panY = 0, isDragging = false, startX, startY;
     let growthActive = false, growthReq = null, agents = [], nutrientMap = [], trailMap = [];
     let useFileSystem = false, isFullscreen = false;
@@ -350,7 +351,7 @@
     }
 
     function updateAudioParams() {
-        if(!audioCtx || !pulseActive) return; // Fixed: No param updates if engine is off
+        if(!audioCtx || !pulseActive) return; 
         const getV = (id) => parseFloat(document.getElementById(id).value);
         const spd = getV('masterSpeed') / 100;
         masterGain.gain.setTargetAtTime((getV('masterVol')/100)*0.15, audioCtx.currentTime, 0.05);
@@ -379,6 +380,12 @@
         if (getV('halftone') > 1 && pulseStep % 2 !== 0) triggerOsc((4000 + (getV('halftone')*100))*spd, 'sine', 0.01, getV('halftone')/150);
         if (getV('grain') > 5 && Math.random() > 0.4) triggerOsc((6000 + (Math.random()*6000))*spd, 'sine', 0.015, getV('grain')/500);
         if (getV('glitchShift') > 15 && Math.random() > 0.85) triggerOsc((Math.random()*800 + 50)*spd, 'square', 0.1, getV('glitchShift')/80);
+        
+        // Coral Engine Sprout sound
+        if (document.getElementById('growthMode').value === 'coral' && growthActive && pulseStep % 4 === 0) {
+            triggerOsc(1500 + (Math.random() * 1200), 'sine', 0.04, 0.08);
+        }
+
         if (growthActive) {
             const root = (110 * (getV('gamma')/10)) * spd;
             if (pulseStep % 8 === 0) {
@@ -397,7 +404,7 @@
     }
 
     function triggerOsc(f, t, d, v) {
-        if (!audioCtx || !pulseActive) return; // Guard against triggered sounds when off
+        if (!audioCtx || !pulseActive) return; 
         const o = audioCtx.createOscillator(), g = audioCtx.createGain();
         o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
         g.gain.setValueAtTime(v, audioCtx.currentTime);
@@ -420,7 +427,7 @@
         initAudio(); pulseActive = !pulseActive;
         document.getElementById('pulseBtn').innerText = pulseActive ? 'ON' : 'OFF';
         if (pulseActive) {
-            updateAudioParams(); // Immediate update on activation
+            updateAudioParams(); 
             runEngine();
         } else {
             Object.keys(synthVoices).forEach(k => { if(synthVoices[k]) synthVoices[k].g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2); });
@@ -432,10 +439,11 @@
         if (!imgSource || growthActive) return;
         const w = canvas.width = imgSource.width, h = canvas.height = imgSource.height;
         ctx.drawImage(imgSource, 0, 0);
-        applyLivePostProcessing(w, h);
+        applyLivePostProcessing(canvas, ctx);
     }
 
-    function applyLivePostProcessing(w, h) {
+    function applyLivePostProcessing(targetCanvas, targetCtx) {
+        const w = targetCanvas.width, h = targetCanvas.height;
         const getV = (id) => parseFloat(document.getElementById(id).value);
         const pSize = Math.max(1, Math.round(getV('pixelSize'))), 
               ditherAmt = getV('dither'), 
@@ -450,7 +458,7 @@
               gaInv = 1 / (getV('gamma') / 10), 
               sat = getV('saturate') / 100;
 
-        let imgData = ctx.getImageData(0, 0, w, h), d = imgData.data;
+        let imgData = targetCtx.getImageData(0, 0, w, h), d = imgData.data;
 
         for (let i = 0; i < d.length; i += 4) {
             let r = (d[i] + br - 128) * ct + 128, g = (d[i+1] + br - 128) * ct + 128, b = (d[i+2] + br - 128) * ct + 128;
@@ -480,10 +488,10 @@
 
         if (abAmt > 0) { const buf = new Uint8ClampedArray(d), off = abAmt * 4; for (let i = 0; i < d.length; i += 4) { if (i >= off) d[i] = buf[i - off]; if (i + off < d.length) d[i+2] = buf[i + off + 2]; } }
         
-        ctx.putImageData(imgData, 0, 0);
-        if (bloomAmt > 0) { ctx.globalCompositeOperation = 'screen'; ctx.filter = `blur(${bloomAmt}px) brightness(1.1)`; ctx.drawImage(canvas, 0, 0); ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over'; }
-        if (scanAmt > 0) { ctx.fillStyle = `rgba(0,0,0,${scanAmt/100})`; for(let y=0; y<h; y+=3) ctx.fillRect(0, y, w, 1); }
-        if (grainAmt > 0) { ctx.fillStyle = `rgba(255,255,255,${grainAmt/400})`; for (let i=0; i<(w*h*(grainAmt/100)); i++) ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1); }
+        targetCtx.putImageData(imgData, 0, 0);
+        if (bloomAmt > 0) { targetCtx.globalCompositeOperation = 'screen'; targetCtx.filter = `blur(${bloomAmt}px) brightness(1.1)`; targetCtx.drawImage(targetCanvas, 0, 0); targetCtx.filter = 'none'; targetCtx.globalCompositeOperation = 'source-over'; }
+        if (scanAmt > 0) { targetCtx.fillStyle = `rgba(0,0,0,${scanAmt/100})`; for(let y=0; y<h; y+=3) targetCtx.fillRect(0, y, w, 1); }
+        if (grainAmt > 0) { targetCtx.fillStyle = `rgba(255,255,255,${grainAmt/400})`; for (let i=0; i<(w*h*(grainAmt/100)); i++) targetCtx.fillRect(Math.random()*w, Math.random()*h, 1, 1); }
     }
 
     function applyPixelation(data, w, h, pSize, ditherAmt) {
@@ -555,6 +563,19 @@
             for (let y = h; y > 0; y -= stepSize) for (let x = 0; x < w; x += stepSize) { const i = (y * w + x) * 4; const br = (data[i] + data[i+1] + data[i+2]) / 3; if (br > 40 && Math.random() > 0.8) agents.push(createPlant(x, y, data)); }
         } else if (mode === 'slime') {
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, br = (data[i] + data[i+1] + data[i+2]) / 3, sat = Math.max(data[i], data[i+1], data[i+2]) - Math.min(data[i], data[i+1], data[i+2]) - Math.min(data[i], data[i+1], data[i+2]); nutrientMap[y * w + x] = br / 255; if ((sat > 150 || br > 200) && Math.random() > 0.985) for(let k=0; k<10; k++) agents.push({ x: x, y: y, angle: Math.random() * Math.PI * 2, color: `rgb(${data[i]},${data[i+1]},${data[i+2]})` }); }
+        } else if (mode === 'coral') {
+            for (let i = 0; i < 25; i++) {
+                let rx = Math.random() * w, ry = Math.random() * h;
+                let idx = (Math.floor(ry) * w + Math.floor(rx)) * 4;
+                agents.push({
+                    x: rx, y: ry,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: 0.7 + Math.random(),
+                    life: 1.0,
+                    thickness: 1.2 + Math.random() * 2,
+                    color: `rgb(${data[idx]}, ${data[idx+1]}, ${data[idx+2]})`
+                });
+            }
         } else {
             for (let y = 0; y < h; y += density) for (let x = 0; x < w; x += density) { const i = (y * w + x) * 4; agents.push({ ox: x, oy: y, x: x, y: y, color: `rgb(${data[i]},${data[i+1]},${data[i+2]})` }); }
         }
@@ -605,6 +626,37 @@
                 ctx.beginPath(); ctx.arc(a.x, a.y, pSize, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.globalAlpha = 0.65; ctx.fill();
             });
             for (let i = 0; i < trailMap.length; i++) trailMap[i] *= 0.95; 
+        } else if (mode === 'coral') {
+            const moveSpeed = (0.5 + (chaos * 0.6)) * spd;
+            const branchChance = 0.02 + (chaos * 0.08);
+            const sourceData = ctx.getImageData(0, 0, w, h).data;
+            for (let i = agents.length - 1; i >= 0; i--) {
+                const a = agents[i];
+                if (a.life <= 0) { agents.splice(i, 1); continue; }
+                const ix = Math.floor(a.x), iy = Math.floor(a.y);
+                const idx = (iy * w + ix) * 4;
+                const sensorDist = 12;
+                const leftAng = a.angle - 0.5, rightAng = a.angle + 0.5;
+                const getLum = (ang) => {
+                    const sx = Math.floor(a.x + Math.cos(ang) * sensorDist), sy = Math.floor(a.y + Math.sin(ang) * sensorDist);
+                    if (sx < 0 || sx >= w || sy < 0 || sy >= h) return -1;
+                    const sIdx = (sy * w + sx) * 4;
+                    return sourceData[sIdx] + sourceData[sIdx+1] + sourceData[sIdx+2];
+                };
+                if (getLum(leftAng) > getLum(rightAng)) a.angle -= 0.12; 
+                else if (getLum(rightAng) > getLum(leftAng)) a.angle += 0.12;
+                a.angle += (Math.random() - 0.5) * 0.1;
+                ctx.beginPath(); ctx.moveTo(a.x, a.y);
+                a.x += Math.cos(a.angle) * moveSpeed; a.y += Math.sin(a.angle) * moveSpeed;
+                ctx.lineTo(a.x, a.y);
+                if (ix >= 0 && ix < w && iy >= 0 && iy < h) a.color = `rgb(${sourceData[idx]}, ${sourceData[idx+1]}, ${sourceData[idx+2]})`;
+                ctx.strokeStyle = a.color; ctx.lineWidth = a.thickness * a.life * pSize; ctx.globalAlpha = 0.6; ctx.lineCap = 'round'; ctx.stroke();
+                a.life -= 0.003 * (1/spd);
+                if (Math.random() < branchChance && agents.length < 1200) {
+                    agents.push({ ...a, angle: a.angle + (Math.random() - 0.5) * 1.8, life: a.life * 0.8, thickness: a.thickness * 0.7 });
+                }
+            }
+            if (agents.length < 5 && Math.random() > 0.98) initGrowth();
         } else {
             const t = performance.now() / 2500 * spd;
             agents.forEach(a => {
@@ -614,7 +666,7 @@
             });
         }
 
-        applyLivePostProcessing(w, h);
+        applyLivePostProcessing(canvas, ctx);
         growthReq = requestAnimationFrame(growthLoop);
     }
 
@@ -666,7 +718,16 @@
     document.getElementById('upload').onchange = (e) => { 
         const file = e.target.files[0]; if (!file) return;
         const r = new FileReader(); r.onload = (f) => { 
-            const nI = new Image(); nI.onload = async () => { primaryOriginal = imgSource = nI; resetSlidersOnly(false); req(); setTimeout(resetZoom, 100); }; nI.src = f.target.result; 
+            const nI = new Image(); nI.onload = async () => { 
+                highResSource = nI; 
+                const maxDim = 1280;
+                const scale = Math.min(1, maxDim / Math.max(nI.width, nI.height));
+                const tmp = document.createElement('canvas'); tmp.width = nI.width * scale; tmp.height = nI.height * scale;
+                const tCtx = tmp.getContext('2d'); tCtx.drawImage(nI, 0, 0, tmp.width, tmp.height);
+                const lightImg = new Image(); lightImg.onload = () => {
+                    primaryOriginal = imgSource = lightImg; resetSlidersOnly(false); req(); setTimeout(resetZoom, 100);
+                }; lightImg.src = tmp.toDataURL();
+            }; nI.src = f.target.result; 
         }; r.readAsDataURL(file); 
     };
 
@@ -684,7 +745,6 @@
                     el.value = state.current; 
                     if(!growthActive) req(); 
                 }
-                // Fixed: Only update audio oscillators if engine is ON
                 if (pulseActive && audioCtx && state.gain) { 
                     state.gain.gain.setTargetAtTime(0.1, audioCtx.currentTime, 0.1); 
                     if (state.osc) {
@@ -712,8 +772,8 @@
         if (e.code === 'Digit1') { document.getElementById('growthMode').value = 'slime'; if(growthActive) initGrowth(); }
         if (e.code === 'Digit2') { document.getElementById('growthMode').value = 'garden'; if(growthActive) initGrowth(); }
         if (e.code === 'Digit3') { document.getElementById('growthMode').value = 'fluid'; if(growthActive) initGrowth(); }
+        if (e.code === 'Digit4') { document.getElementById('growthMode').value = 'coral'; if(growthActive) initGrowth(); }
 
-        // Fixed: Only register swell keys if the engine is on
         if (swellState[e.code]) {
             if (!pulseActive) return; 
             initAudio(); activeKeys.add(e.code);
@@ -750,10 +810,11 @@
     };
 
     function exportImg() {
-        if (!canvas) return;
-        const offscreen = document.createElement('canvas'); offscreen.width = canvas.width; offscreen.height = canvas.height;
-        const oCtx = offscreen.getContext('2d'); oCtx.fillStyle = "#000000"; oCtx.fillRect(0, 0, offscreen.width, offscreen.height); oCtx.drawImage(canvas, 0, 0);
-        const l = document.createElement('a'); l.download = 'TRM_PX_EXP.jpg'; l.href = offscreen.toDataURL('image/jpeg', 0.95); l.click();
+        if (!imgSource) return;
+        const link = document.createElement('a');
+        link.download = `TRM_EXP_${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
     }
 
     async function toggleRecording() {
@@ -763,7 +824,6 @@
             const canvasStream = canvas.captureStream(30);
             let combinedStream;
             
-            // Fixed: Only add audio track if engine is ON
             if (pulseActive && audioCtx) {
                 const audioDest = audioCtx.createMediaStreamDestination();
                 masterGain.connect(audioDest);
